@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ルーレット飯 — 近くの飯を、ルーレットで決める</title>
+<meta name="description" content="外食したいけど、どこに行くか決まらない。そんなときは回すだけ。近所のお店から今日の一軒をルーレットで決めるアプリ「ルーレット飯」。">
+<style>
+  :root{
+    --ink:#2b2622;
+    --paper:#fffdf9;
+    --cream:#fff6ec;
+    --orange:#e8590c;
+    --orange-soft:#ffd8a8;
+    --orange-line:#ffe8cc;
+    --muted:#8a8178;
+    --blue:#1c7ed6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+
+  /* ---- ヒーロー ---- */
+  .hero{
+    position:relative;
+    background:radial-gradient(120% 120% at 50% 0%,var(--cream) 0%,var(--paper) 70%);
+    padding:72px 0 40px;
+    text-align:center;
+    overflow:hidden;
+  }
+  /* 目障りにならない薄い地図＋ピンの背景 */
+  .hero-map{
+    position:absolute;inset:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;
+  }
+  .hero .wrap{position:relative;z-index:1}
+  .badge-top{
+    display:inline-block;font-size:14px;font-weight:700;color:var(--orange);
+    background:#fff;border:1px solid var(--orange-line);
+    padding:6px 16px;border-radius:999px;margin-bottom:24px;
+  }
+  .hero h1{
+    font-size:clamp(32px,6vw,56px);font-weight:800;letter-spacing:.01em;
+    line-height:1.25;margin-bottom:20px;
+  }
+  .hero h1 .accent{color:var(--orange)}
+  .hero p.lead{
+    font-size:clamp(16px,2.4vw,20px);color:#5c554e;
+    max-width:600px;margin:0 auto 36px;
+  }
+
+  /* ---- ルーレット風の飾り ---- */
+  .wheel{
+    width:180px;height:180px;margin:8px auto 40px;border-radius:50%;
+    background:conic-gradient(
+      var(--orange) 0deg 45deg, var(--orange-soft) 45deg 90deg,
+      var(--orange) 90deg 135deg, var(--orange-soft) 135deg 180deg,
+      var(--orange) 180deg 225deg, var(--orange-soft) 225deg 270deg,
+      var(--orange) 270deg 315deg, var(--orange-soft) 315deg 360deg);
+    position:relative;box-shadow:0 12px 30px rgba(232,89,12,.25);
+    animation:spin 14s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.wheel{animation:none}}
+  .wheel::after{
+    content:"🎲";position:absolute;inset:0;margin:auto;
+    width:64px;height:64px;background:#fff;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:30px;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+  }
+
+  /* ---- ダウンロードボタン（プレースホルダ） ---- */
+  .cta{
+    display:inline-flex;align-items:center;gap:10px;
+    background:#111;color:#fff;text-decoration:none;
+    padding:14px 26px;border-radius:14px;font-weight:700;font-size:16px;
+    box-shadow:0 8px 20px rgba(0,0,0,.18);transition:transform .15s ease;
+  }
+  .cta:hover{transform:translateY(-2px)}
+  .cta small{display:block;font-size:11px;font-weight:500;opacity:.8}
+  .cta .big{font-size:17px;line-height:1.1}
+  .cta-note{margin-top:14px;font-size:13px;color:var(--muted)}
+  .cta-row{
+    display:flex;gap:14px;justify-content:center;flex-wrap:wrap;
+  }
+  .cta .store-ic{font-size:24px;line-height:1}
+
+  /* ---- セクション共通 ---- */
+  section{padding:64px 0}
+  .section-eyebrow{
+    text-align:center;font-size:13px;font-weight:700;letter-spacing:.12em;
+    color:var(--orange);text-transform:uppercase;margin-bottom:10px;
+  }
+  .section-title{
+    text-align:center;font-size:clamp(24px,4vw,34px);font-weight:800;
+    margin-bottom:44px;
+  }
+
+  /* ---- こんなときに ---- */
+  .cases{background:var(--cream)}
+  .case-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;
+  }
+  .case{
+    background:#fff;border:1px solid var(--orange-line);border-radius:18px;
+    padding:28px 24px;
+  }
+  .case .emoji{font-size:32px;display:block;margin-bottom:12px}
+  .case h3{font-size:18px;margin-bottom:8px}
+  .case p{font-size:15px;color:#6b645c}
+
+  /* ---- 使い方 3ステップ ---- */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:28px}
+  .step{text-align:center}
+  .step .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:52px;height:52px;border-radius:50%;
+    background:var(--orange);color:#fff;font-size:22px;font-weight:800;
+    margin-bottom:16px;
+  }
+  .step h3{font-size:18px;margin-bottom:6px}
+  .step p{font-size:15px;color:#6b645c}
+
+  /* ---- スクリーンショット ---- */
+  .shots{background:var(--cream)}
+  .shot-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:24px;max-width:760px;margin:0 auto;
+  }
+  .shot{
+    background:#fff;border:1px solid var(--orange-line);border-radius:24px;
+    aspect-ratio:9/19;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:14px;text-align:center;padding:16px;
+    overflow:hidden;
+  }
+  .shot img{width:100%;height:100%;object-fit:cover;border-radius:24px;display:block}
+
+  /* ---- 特長 ---- */
+  .features{max-width:720px;margin:0 auto}
+  .feature{
+    display:flex;gap:16px;align-items:flex-start;
+    padding:20px 0;border-bottom:1px solid var(--orange-line);
+  }
+  .feature:last-child{border-bottom:none}
+  .feature .ic{
+    flex:0 0 44px;height:44px;border-radius:12px;background:var(--cream);
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  .feature h3{font-size:17px;margin-bottom:4px}
+  .feature p{font-size:15px;color:#6b645c}
+
+  /* ---- 最終CTA ---- */
+  .final{
+    text-align:center;background:radial-gradient(120% 120% at 50% 100%,var(--cream) 0%,var(--paper) 70%);
+  }
+  .final h2{font-size:clamp(24px,4vw,32px);font-weight:800;margin-bottom:16px}
+  .final p{color:#6b645c;margin-bottom:28px}
+
+  /* ---- プライバシーポリシー ---- */
+  .privacy{background:#fff;border-top:1px solid var(--orange-line)}
+  .privacy .wrap{max-width:760px}
+  .privacy h2{font-size:22px;font-weight:800;margin-bottom:8px}
+  .privacy .updated{font-size:13px;color:var(--muted);margin-bottom:24px}
+  .privacy h3{font-size:16px;margin:22px 0 6px}
+  .privacy p{font-size:15px;color:#4f483f;margin-bottom:10px}
+  .privacy ul{margin:0 0 10px 20px}
+  .privacy li{font-size:15px;color:#4f483f;margin-bottom:6px}
+
+  /* ---- フッター ---- */
+  footer{
+    text-align:center;padding:32px 24px;background:var(--ink);color:#d8cfc5;
+    font-size:13px;
+  }
+  footer a{color:#ffcfa0;text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- ============ ヒーロー ============ -->
+<header class="hero">
+  <!-- 薄い地図＋ピンの背景（装飾・目障りにならない程度） -->
+  <svg class="hero-map" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="mapfade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#fff6ec" stop-opacity="0.15"/>
+        <stop offset="55%" stop-color="#fff6ec" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#fffdf9" stop-opacity="0.95"/>
+      </linearGradient>
+    </defs>
+
+    <!-- ベースの地面 -->
+    <rect x="0" y="0" width="1200" height="600" fill="#fbe9d4" opacity="0.35"/>
+
+    <!-- 緑地・公園 -->
+    <g fill="#8fce7d" opacity="0.28">
+      <rect x="70" y="250" width="150" height="120" rx="14"/>
+      <circle cx="1050" cy="130" r="70"/>
+      <rect x="520" y="430" width="180" height="90" rx="18"/>
+    </g>
+
+    <!-- 川 -->
+    <path d="M-20 430 Q220 470 430 440 Q650 405 860 460 Q1030 500 1220 450"
+          stroke="#8ec5ee" stroke-width="26" fill="none" opacity="0.3"/>
+
+    <!-- 街区（大小の区画をびっしり） -->
+    <g fill="#f4a060" opacity="0.22">
+      <!-- 上段 -->
+      <rect x="30" y="40" width="120" height="70" rx="5"/>
+      <rect x="165" y="40" width="80" height="70" rx="5"/>
+      <rect x="30" y="125" width="70" height="60" rx="5"/>
+      <rect x="115" y="125" width="130" height="60" rx="5"/>
+      <rect x="300" y="30" width="90" height="80" rx="5"/>
+      <rect x="405" y="30" width="120" height="50" rx="5"/>
+      <rect x="300" y="125" width="110" height="55" rx="5"/>
+      <rect x="425" y="95" width="100" height="85" rx="5"/>
+      <rect x="640" y="30" width="90" height="70" rx="5"/>
+      <rect x="745" y="30" width="110" height="70" rx="5"/>
+      <rect x="640" y="115" width="130" height="65" rx="5"/>
+      <rect x="785" y="115" width="70" height="65" rx="5"/>
+      <rect x="880" y="40" width="120" height="60" rx="5"/>
+      <rect x="880" y="115" width="90" height="65" rx="5"/>
+      <rect x="985" y="115" width="90" height="65" rx="5"/>
+      <rect x="1095" y="40" width="90" height="70" rx="5"/>
+      <rect x="1095" y="125" width="90" height="55" rx="5"/>
+      <!-- 中段 -->
+      <rect x="255" y="215" width="90" height="70" rx="5"/>
+      <rect x="360" y="215" width="130" height="70" rx="5"/>
+      <rect x="255" y="300" width="110" height="60" rx="5"/>
+      <rect x="380" y="300" width="110" height="60" rx="5"/>
+      <rect x="720" y="215" width="120" height="65" rx="5"/>
+      <rect x="855" y="215" width="90" height="65" rx="5"/>
+      <rect x="720" y="295" width="90" height="65" rx="5"/>
+      <rect x="825" y="295" width="120" height="65" rx="5"/>
+      <rect x="985" y="230" width="100" height="60" rx="5"/>
+      <rect x="1100" y="230" width="85" height="60" rx="5"/>
+      <rect x="985" y="305" width="120" height="55" rx="5"/>
+      <!-- 下段 -->
+      <rect x="40" y="420" width="110" height="70" rx="5"/>
+      <rect x="165" y="420" width="90" height="70" rx="5"/>
+      <rect x="40" y="505" width="130" height="55" rx="5"/>
+      <rect x="185" y="505" width="70" height="55" rx="5"/>
+      <rect x="300" y="540" width="120" height="50" rx="5"/>
+      <rect x="760" y="530" width="110" height="60" rx="5"/>
+      <rect x="885" y="530" width="130" height="60" rx="5"/>
+      <rect x="1030" y="530" width="90" height="60" rx="5"/>
+    </g>
+
+    <!-- 道路（格子＋斜め＋細街路） -->
+    <g stroke="#ee9a55" fill="none" stroke-linecap="round">
+      <!-- 主要道（太め） -->
+      <g stroke-width="11" opacity="0.35">
+        <line x1="0" y1="200" x2="1200" y2="200"/>
+        <line x1="0" y1="385" x2="1200" y2="385"/>
+        <line x1="270" y1="0" x2="270" y2="600"/>
+        <line x1="620" y1="0" x2="620" y2="600"/>
+        <line x1="965" y1="0" x2="965" y2="600"/>
+        <path d="M-20 90 Q550 150 1220 70"/>
+      </g>
+      <!-- 細街路（細め） -->
+      <g stroke-width="5" opacity="0.22">
+        <line x1="120" y1="0" x2="120" y2="600"/>
+        <line x1="420" y1="0" x2="420" y2="200"/>
+        <line x1="770" y1="0" x2="770" y2="600"/>
+        <line x1="1085" y1="0" x2="1085" y2="600"/>
+        <line x1="0" y1="115" x2="1200" y2="115"/>
+        <line x1="0" y1="300" x2="1200" y2="300"/>
+        <line x1="0" y1="500" x2="1200" y2="500"/>
+        <path d="M270 385 L520 560"/>
+        <path d="M620 200 L860 30"/>
+      </g>
+    </g>
+
+    <!-- ピン（大小・濃淡） -->
+    <g>
+      <g transform="translate(340,175)"><path d="M0 0 C-16 -23 -16 -39 0 -39 C16 -39 16 -23 0 0 Z" fill="#e8590c" opacity="0.7"/><circle cx="0" cy="-27" r="6" fill="#fff"/></g>
+      <g transform="translate(690,150)"><path d="M0 0 C-13 -19 -13 -32 0 -32 C13 -32 13 -19 0 0 Z" fill="#e8590c" opacity="0.55"/><circle cx="0" cy="-22" r="5" fill="#fff"/></g>
+      <g transform="translate(560,320)"><path d="M0 0 C-13 -19 -13 -32 0 -32 C13 -32 13 -19 0 0 Z" fill="#e8590c" opacity="0.5"/><circle cx="0" cy="-22" r="5" fill="#fff"/></g>
+      <g transform="translate(1000,180)"><path d="M0 0 C-12 -17 -12 -29 0 -29 C12 -29 12 -17 0 0 Z" fill="#e8590c" opacity="0.45"/><circle cx="0" cy="-20" r="4" fill="#fff"/></g>
+      <g transform="translate(180,300)"><path d="M0 0 C-12 -17 -12 -29 0 -29 C12 -29 12 -17 0 0 Z" fill="#e8590c" opacity="0.4"/><circle cx="0" cy="-20" r="4" fill="#fff"/></g>
+      <g transform="translate(880,300)"><path d="M0 0 C-11 -16 -11 -27 0 -27 C11 -27 11 -16 0 0 Z" fill="#e8590c" opacity="0.38"/><circle cx="0" cy="-19" r="4" fill="#fff"/></g>
+    </g>
+
+    <!-- 下方向へのフェード -->
+    <rect x="0" y="0" width="1200" height="600" fill="url(#mapfade)"/>
+  </svg>
+  <div class="wrap">
+    <span class="badge-top">🍚 近くの飯を、ルーレットで。</span>
+    <div class="wheel" role="img" aria-label="ルーレットのイラスト"></div>
+    <h1>どこ行く？ は、<br><span class="accent">回して</span>決めよう。</h1>
+    <p class="lead">外食したいけど、店が決まらない。そんなときは「ルーレット飯」。近所のお店から、今日の一軒をえいっと選びます。</p>
+
+    <!-- ▼ 公開後、各 href にストアのURLを入れてください ▼ -->
+    <div class="cta-row">
+      <a class="cta" href="#" aria-label="App Storeでダウンロード（準備中）">
+        <span class="store-ic"></span>
+        <span><small>近日公開</small><span class="big">App Store</span></span>
+      </a>
+      <a class="cta" href="#" aria-label="Google Playでダウンロード（準備中）">
+        <span class="store-ic">▶</span>
+        <span><small>近日公開</small><span class="big">Google Play</span></span>
+      </a>
+    </div>
+    <p class="cta-note">※ iOS / Android 向けに準備中です。</p>
+  </div>
+</header>
+
+<!-- ============ こんなときに ============ -->
+<section class="cases">
+  <div class="wrap">
+    <p class="section-eyebrow">Scene</p>
+    <h2 class="section-title">こんなときに</h2>
+    <div class="case-grid">
+      <div class="case">
+        <span class="emoji">🤔</span>
+        <h3>決められないとき</h3>
+        <p>お腹は空いた。でも何食べるか思いつかない。そんな迷いを、ルーレットが断ち切ります。</p>
+      </div>
+      <div class="case">
+        <span class="emoji">👥</span>
+        <h3>友だちと悩んだとき</h3>
+        <p>「どこでもいい」がぶつかる夜に。誰のせいでもなく、ルーレットが決めてくれます。</p>
+      </div>
+      <div class="case">
+        <span class="emoji">🎲</span>
+        <h3>いつもと違う店に</h3>
+        <p>行きつけ以外も候補に。近所の知らなかった一軒に出会えるかもしれません。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 使い方 ============ -->
+<section>
+  <div class="wrap">
+    <p class="section-eyebrow">How to</p>
+    <h2 class="section-title">使い方は、3ステップ</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>範囲を選ぶ</h3>
+        <p>現在地から300m〜2kmで、探す範囲を指定。歩ける距離に絞れます。</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>回す</h3>
+        <p>「決める」を押すと、近所の候補からルーレットがくるくる。今日の一軒が決まります。</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>向かう</h3>
+        <p>決まったお店へ、そのまま地図アプリで案内。あとは食べるだけ。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ スクリーンショット ============ -->
+<section class="shots">
+  <div class="wrap">
+    <p class="section-eyebrow">Screens</p>
+    <h2 class="section-title">画面イメージ</h2>
+    <div class="shot-grid">
+      <!-- スクリーンショットを screenshot1.png / screenshot2.png という名前で
+           同じ場所にアップロードすれば表示されます。
+           画像がまだ無い間は、代替テキストが表示されます。 -->
+      <div class="shot"><img src="screenshot1.png" alt="ルーレット画面" onerror="this.style.display='none';this.parentNode.innerHTML='ここにルーレット画面<br>(screenshot1.png)';"></div>
+      <div class="shot"><img src="screenshot2.png" alt="候補一覧画面" onerror="this.style.display='none';this.parentNode.innerHTML='ここに候補一覧画面<br>(screenshot2.png)';"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 特長 ============ -->
+<section>
+  <div class="wrap">
+    <p class="section-eyebrow">Features</p>
+    <h2 class="section-title">こだわり</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="ic">📍</div>
+        <div><h3>ご近所に絞れる</h3><p>「近くの飯」がコンセプト。歩いて行ける範囲から選べます。</p></div>
+      </div>
+      <div class="feature">
+        <div class="ic">🍜</div>
+        <div><h3>ジャンルで絞る</h3><p>ラーメン・和食・寿司・カフェなど、気分でジャンルを指定できます。</p></div>
+      </div>
+      <div class="feature">
+        <div class="ic">❤️</div>
+        <div><h3>スキ・除外ができる</h3><p>好きな店はお気に入りに、気が乗らない店は候補から外せます。</p></div>
+      </div>
+      <div class="feature">
+        <div class="ic">🗺️</div>
+        <div><h3>そのまま地図で案内</h3><p>決まった店へ、AppleマップかGoogleマップでナビ。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 最終CTA ============ -->
+<section class="final">
+  <div class="wrap">
+    <h2>今日の一軒、回して決めよう。</h2>
+    <p>迷う時間を、楽しい時間に。</p>
+    <div class="cta-row">
+      <a class="cta" href="#" aria-label="App Storeでダウンロード（準備中）">
+        <span class="store-ic"></span>
+        <span><small>近日公開</small><span class="big">App Store</span></span>
+      </a>
+      <a class="cta" href="#" aria-label="Google Playでダウンロード（準備中）">
+        <span class="store-ic">▶</span>
+        <span><small>近日公開</small><span class="big">Google Play</span></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ プライバシーポリシー ============ -->
+<section class="privacy" id="privacy">
+  <div class="wrap">
+    <h2>プライバシーポリシー</h2>
+    <p class="updated">最終更新日：2026年7月11日</p>
+
+    <p>「ルーレット飯」（以下「本アプリ」）は、ユーザーのプライバシーを尊重します。本アプリにおける情報の取り扱いについて、以下のとおり定めます。</p>
+
+    <h3>位置情報の利用</h3>
+    <p>本アプリは、現在地周辺の飲食店を検索するために、ユーザーの位置情報を利用します。位置情報は、店舗検索のために Google Maps Platform（Google の提供するサービス）へ送信され、Google のプライバシーポリシーに従って取り扱われます。</p>
+
+    <h3>アプリ運営者による取り扱い</h3>
+    <p>本アプリの運営者は、ユーザーの位置情報、ルーレットの結果、および検索・利用の履歴を、収集・保存・閲覧することは一切ありません。</p>
+
+    <h3>端末内に保存される情報</h3>
+    <p>お気に入り、除外リスト、利用履歴などの情報は、ユーザーの端末内にのみ保存され、外部のサーバーへ送信されることはありません。これらの情報は、ユーザーご自身の操作でいつでも削除できます。</p>
+
+    <h3>第三者サービスについて</h3>
+    <p>本アプリは、店舗情報の取得に Google Maps Platform を利用しています。当該サービスの情報の取り扱いについては、Google のプライバシーポリシーをご確認ください。</p>
+
+    <h3>お問い合わせ</h3>
+    <p>本ポリシーに関するお問い合わせは、下記の連絡先までご連絡ください。<br>連絡先：（ここにメールアドレス等を記載してください）</p>
+
+    <h3>本ポリシーの変更</h3>
+    <p>本ポリシーの内容は、必要に応じて変更されることがあります。変更後の内容は、本ページに掲載した時点から適用されます。</p>
+  </div>
+</section>
+
+<footer>
+  <p>ルーレット飯 &copy; 2026 &nbsp;|&nbsp; <a href="#privacy">プライバシーポリシー</a></p>
+</footer>
+
+</body>
+</html>
